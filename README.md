@@ -22,7 +22,7 @@ companion manuscript.
 
 ## Links
 
-- [Repo](https://github.com/jackson-lautier/<nba_roi> "<nba_roi> Repo")
+- [Repo](https://github.com/jackson-lautier/nba_roi)
 
 - [arXiv](https://arxiv.org/abs/2309.05783)
 
