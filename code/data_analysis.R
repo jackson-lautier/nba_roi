@@ -41,6 +41,7 @@ require(extrafont) #get times new roman for charts
 require(ggplot2) #plots
 require(jrvFinance) #IRR calculations
 require('cowplot') #grid plots
+require(stringr) #logistic regression data manipulation
 ######################################################################################
 ######################################################################################
 ######################################################################################
@@ -2451,40 +2452,161 @@ dat = merge(dat1, gs_DAT, by = "link")
 outcome = as.numeric(str_sub(dat$link,-1,-1))
 
 dat = data.frame("res" = outcome,
-                 "jpl" = dat$WL,
+                 "wl" = dat$WL,
                  "ws" = dat$WS,
                  "gs" = dat$GS)
 
-mod1 <- glm(res ~ jpl + ws + gs, family=binomial, data=dat)
+mod1 <- glm(res ~ wl + ws + gs, family=binomial, data=dat)
 pscl::pR2(mod1)["McFadden"]
 summary(mod1)
 car::vif(mod1) #colinearity issue; GS and WS highly correlated
+pscl::pR2(mod1)["McFadden"] #still performs 'well'
+caret::varImp(mod1) #most important covariates
 
 #above is Table C2; bonus regressions below
 
-df = scale(data.frame("jpl" = dat$jpl, "ws" = dat$ws, "gs" = dat$gs))
+df = scale(data.frame("wl" = dat$wl, "ws" = dat$ws, "gs" = dat$gs))
 df = as.data.frame(df)
 df = cbind(outcome, df)
 
-mod1 <- glm(outcome ~ jpl + ws + gs, family=binomial, data=df)
+mod1 <- glm(outcome ~ wl + ws + gs, family=binomial, data=df)
 pscl::pR2(mod1)["McFadden"]
 summary(mod1)
 car::vif(mod1) #colinearity issue; GS and WS highly correlated
+pscl::pR2(mod1)["McFadden"] #still performs 'well'
+caret::varImp(mod1) #most important covariates
 
-mod <- glm(res ~ jpl + ws, family=binomial, data=dat)
+mod <- glm(res ~ wl + ws, family=binomial, data=dat)
 summary(mod)
 pscl::pR2(mod)["McFadden"]
 car::vif(mod) #no colinearity issue
+pscl::pR2(mod)["McFadden"] #still performs 'well'
+caret::varImp(mod) #most important covariates
 
-mod <- glm(res ~ jpl + gs, family=binomial, data=dat)
+mod <- glm(res ~ wl + gs, family=binomial, data=dat)
 summary(mod)
 pscl::pR2(mod)["McFadden"]
 car::vif(mod) #no colinearity issue
+pscl::pR2(mod)["McFadden"] #still performs 'well'
+caret::varImp(mod) #most important covariates
 
 mod <- glm(res ~ ws + gs, family=binomial, data=dat)
 summary(mod)
 pscl::pR2(mod)["McFadden"]
 car::vif(mod) #no colinearity issue
+pscl::pR2(mod)["McFadden"] #still performs 'well'
+caret::varImp(mod) #most important covariates
+
+################################################################################
+################################################################################
+################################################################################
+#Figure C1: Simulation Study Results
+################################################################################
+################################################################################
+################################################################################
 
 
+path = "./results"
+file = '2023regseason_WL.csv'
+
+df = read.csv(paste(path,file,sep="/"))
+head(df)
+
+sum(df$game_logit)
+sum(df$win_logit)
+
+d1 <- df[,c(2,46)]
+head(d1)
+
+n = length(unique(df$GAME_ID))
+g_id = unique(df$GAME_ID)
+
+#parameters of normal distribution for SGV
+mu = 100
+sig = 5
+mu2 = 5 + 100^2
+
+#theorem 3.1 expected value
+res <- c()
+for(i in c(1:1000)){
+  
+  #sim one result of SGVs for each game
+  set.seed(i)
+  cur_scen_sgv = data.frame("GAME_ID" = g_id,
+                            "SGV" = rnorm(n, mu, sig))
+  
+  #merge conditional win logits
+  cur_scen_dat = merge(d1, cur_scen_sgv, by = "GAME_ID")
+  
+  #save results
+  res = append(res, sum( cur_scen_dat$win_logit * cur_scen_dat$SGV ))
+  
+  if(i %% 100==0) {
+    # Print on the screen some message
+    cat(paste0("iteration: ", i, "\n"))
+  }
+  
+}
+
+summary(res)
+mean(res)
+mu * n
+
+plot_df = data.frame("Sim_Result" = res,
+                     "Measure" = rep(1, length(res)))
+
+ggplot(plot_df, aes(x = Sim_Result, colour = Measure, fill=Measure)) +
+  geom_density(alpha = 0.25, linewidth = 0.5) +
+  xlab("Simulated Result") +
+  ylab("Frequency (Density)") +
+  scale_x_continuous(labels = scales::comma) +
+  theme_bw() +
+  theme(axis.title.x=element_text(size=9, family="Times New Roman"),
+        axis.text.x=element_text(size=9, family="Times New Roman"),
+        axis.text.y=element_text(size=9, family="Times New Roman"),
+        axis.title.y=element_text(size=9,family="Times New Roman"),
+        strip.text.y = element_text(size = 9, family="Times New Roman"),
+        legend.position = "none") +
+  geom_vline(xintercept = mean(res),
+             linetype='dashed',
+             color="red",
+             linewidth=1) +
+  geom_vline(xintercept = mu * n,
+             linetype='solid',
+             color="black",
+             linewidth=1)
+
+#save, if desired
+ggsave("./results/sim_results.pdf",height=4,width=6,device = cairo_pdf)
+
+
+#theorem 3.1 variance
+res <- c()
+for(i in c(1:10000)){
+  
+  #sim one result of SGVs for each game
+  set.seed(i)
+  cur_scen_sgv = data.frame("GAME_ID" = g_id,
+                            "SGV" = rnorm(n, mu, sig))
+  
+  #merge conditional win logits
+  cur_scen_dat = merge(d1, cur_scen_sgv, by = "GAME_ID")
+  
+  #save results
+  res = append(res, sum( cur_scen_dat$win_logit * cur_scen_dat$SGV ))
+  
+  if(i %% 100==0) {
+    # Print on the screen some message
+    cat(paste0("iteration: ", i, "\n"))
+  }
+  
+}
+
+Wg = c()
+for(g in g_id){
+  Wg = append(Wg, sum(d1$win_logit[d1$GAME_ID == g]))
+}
+
+var(res)
+sum( Wg^2 ) * sig^2
 
