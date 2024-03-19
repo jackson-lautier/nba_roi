@@ -26,7 +26,7 @@
 #folder 'processed_data' in the wd.
 #For data analysis, proceed directly to 'data_analysis.R'.
 #
-#The figure and table references correspond to the January 2024 version
+#The figure and table references correspond to the March 2024 version
 #of the working manuscript.  While the order of figures are subject to
 #change, the figures themselves are likely to remain stable.
 #

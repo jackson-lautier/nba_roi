@@ -19,16 +19,19 @@
 # INSTRUCTIONS
 #
 #supporting files:
-#   seas_dat_clean.csv    #cleaned WL data
-#   seas_dat.csv          #cleaned WS, GS data
-#   player_positions.csv  #player position data
+#   seas_dat_clean.csv      #cleaned WL data
+#   seas_dat.csv            #cleaned WS, GS data
+#   player_positions.csv    #player position data
+#   22.23_player_salary.csv #player salary data
+#   game_tv.csv             #televised game information
+#   attendance.csv          #attendance figures
 #
 #The code must be run sequentially downwards.
 #As the new, cleaned files are prepared, they will be saved in a new
 #folder 'processed_data' in the wd.
 #For data analysis, proceed directly to 'data_analysis.R'.
 #
-#The figure and table references correspond to the January 2024 version
+#The figure and table references correspond to the March 2024 version
 #of the working manuscript.  While the order of figures are subject to
 #change, the figures themselves are likely to remain stable.
 #
