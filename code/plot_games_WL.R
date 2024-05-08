@@ -14,10 +14,10 @@ plot_games_WL = function(player_name){
     guides(x =  guide_axis(angle = 90))+
     ggtitle(paste(player_name,
                   " (PVWL: ",total,";",
-                  " Per Game WinLogit: ",per_game,")",
+                  " Per Game WRMS: ",per_game,")",
                   sep=""))+
     xlab("Game Number")+
-    ylab("WinLogit")+
+    ylab("WRMS (Logistic)")+
     coord_cartesian(ylim=c(-0.025,0.20))+
     scale_y_continuous(labels = scales::percent_format(accuracy = 1))+
     theme_bw()+
