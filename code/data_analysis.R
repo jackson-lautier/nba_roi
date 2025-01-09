@@ -38,6 +38,7 @@
 require('car') #logit function
 require(extrafont) #get times new roman for charts
 require(ggplot2) #plots
+require(dplyr) #sgv calculations
 require(jrvFinance) #IRR calculations
 require('cowplot') #grid plots
 require(stringr) #logistic regression data manipulation
@@ -54,12 +55,15 @@ dir.create('./results/')
 source('./code/total_contrib_WL.R')
 source('./code/total_contrib_WS.R')
 source('./code/total_contrib_GS.R')
+source('./code/total_contrib_BPM.R')
 source('./code/plot_games_WL.R')
 source('./code/total_contrib_WL_ROI.R')
 source('./code/NBA_IRR_WL.R')
 source('./code/total_contrib_WS_ROI.R')
 source('./code/NBA_IRR_WS.R')
 source('./code/total_contrib_GS_ROI.R')
+source('./code/NBA_IRR_GS.R')
+source('./code/total_contrib_BPM_ROI.R')
 source('./code/NBA_IRR_GS.R')
 
 ################################################################################
@@ -858,23 +862,145 @@ results$player[which.max(results$PVGS)]
 
 write.csv(results, './results/PVGS.csv')
 
+################################################################################
+#top PVBPM performers
+################################################################################
+rm(list=ls())
+source('./code/total_contrib_BPM.R')
+
+BPM_dat = read.csv('./clean_data/seas_dat_bpm.csv')
+BPM_dat = BPM_dat[,-1]
+
+m_star = nrow(BPM_dat)
+m_bar = m_star / length(unique(BPM_dat$GAME_ID))
+
+mu = (1/m_star) * sum(BPM_dat$BPM)
+sig = sqrt( (1/(m_star - 1)) * sum( (BPM_dat$BPM - mu)^2 ) )
+mu; sig
+
+mu = mean(BPM_dat$BPM)
+sig = sd(BPM_dat$BPM)
+mu; sig
+
+#equation ()
+BPM_dat$game_BPM = (1/sig) *
+  (BPM_dat$BPM - mu) *
+  (1/m_bar) + (1/m_bar)
+
+write.csv(BPM_dat, './results/2023regseason_BPM.csv')
+
+df = BPM_dat
+players = unique(df$PLAYER_NAME)
+
+start.time <- Sys.time()
+GP = c()
+PVBPM = c()
+for(p in players){
+  GP = append(GP, sum(total_contrib_BPM(p)$game_totals != 0))
+  PVBPM = append(PVBPM, total_contrib_BPM(p)$sum_total)
+}
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
+
+results = data.frame("player" = players,
+                     "GP" = GP,
+                     "PVBPM" = PVBPM,
+                     "BPMpg" = PVBPM / GP)
+
+
+#load position data
+path = "./clean_data"
+file = "player_positions.csv"
+
+bio_dat = read.csv(paste(path,file,sep="/"))
+names(bio_dat) = c("PLAYER_NAME", "POSITION")
+
+#check all players available
+results$player[!(results$player %in% bio_dat$PLAYER_NAME)]
+
+pos = c()
+for(p in results$player){
+  pos = append(pos,
+               bio_dat$POSITION[bio_dat$PLAYER_NAME == p])
+}
+results$position = pos
+table(results$position)
+
+#clean up multi-position listings
+multi_pos = c("PF-C", "PF-SF", "PG-SG", "SF-PF", "SF-SG", "SG-PG")
+results[results$position %in% multi_pos,]
+
+#manual changes to positions (ESPN listing)
+results$position[results$player == "Matisse Thybulle"] = "SG"
+results$position[results$player == "Patrick Beverley"] = "PG"
+results$position[results$player == "Kevin Knox II"] = "SF"
+results$position[results$player == "Kyrie Irving"] = "PG"
+results$position[results$player == "Spencer Dinwiddie"] = "PG"
+results$position[results$player == "Mikal Bridges"] = "SF"
+results$position[results$player == "Dario Saric"] = "PF"
+results$position[results$player == "George Hill"] = "PG"
+results$position[results$player == "Dario Saric"] = "PF"
+results$position[results$player == "T.J. Warren"] = "SF"
+
+table(results$position)
+
+#PVBPM
+
+#get relative value per position
+resultsPG = results[results$position == "PG",]
+resultsPG$Z_val = scale(resultsPG$PVBPM)
+
+resultsSG = results[results$position == "SG",]
+resultsSG$Z_val = scale(resultsSG$PVBPM)
+
+resultsSF = results[results$position == "SF",]
+resultsSF$Z_val = scale(resultsSF$PVBPM)
+
+resultsPF = results[results$position == "PF",]
+resultsPF$Z_val = scale(resultsPF$PVBPM)
+
+resultsC = results[results$position == "C",]
+resultsC$Z_val = scale(resultsC$PVBPM)
+
+#top performers based on Z-score values relative to position
+results = rbind(resultsPG, resultsSG, resultsSF,
+                resultsPF, resultsC)
+
+topX = 5
+top_df = subset(results,
+                Z_val >= 
+                  quantile(Z_val,
+                           1 - topX/nrow(results)))
+top_df[with(top_df, order(-Z_val)), ]
+#max overall
+results$player[which.max(results$PVBPM)]
+#average player
+82 * (1 / m_bar)
+
+write.csv(results, './results/PVBPM.csv')
+
 rm(list=ls())
 
 wl = read.csv('./results/2023regseason_WL.csv')$win_logit
 ws = read.csv('./results/2023regseason_WS.csv')$game_WS
 gs = read.csv('./results/2023regseason_GS.csv')$game_GS
+bpm = read.csv('./results/2023regseason_BPM.csv')$game_BPM
 
 
 #density plots
 plot_df = data.frame("Measure" = c(rep("Logistic Regression",length(wl)),
                                    rep("Win Score",length(ws)),
-                                   rep("Game Score",length(gs))),
-                     "Value" = c(wl, ws, gs))
+                                   rep("Game Score",length(gs)),
+                                   rep("Box Plus Minus", length(bpm))),
+                     "Value" = c(wl, ws, gs, bpm))
 
 
 ggplot(plot_df, aes(x = Value, colour = Measure, fill=Measure)) +
   geom_density(alpha = 0.25, linewidth = 0.5) +
-  scale_x_continuous(labels = scales::percent_format(accuracy = 1)) +
+  #xlim(-0.25, 0.40) +
+  scale_x_continuous(labels = scales::percent_format(accuracy = 1),
+                     limits = c(-0.25, 0.40)) +
   xlab("Player Game Share") +
   ylab("Frequency (Density)") +
   theme_bw() +
@@ -1029,19 +1155,136 @@ rm(list=ls())
 path = "./clean_data"
 game_tv = read.csv(paste(path,"game_tv.csv",sep="/"))
 
-#links to references used in manuscript
-#tv deal:
-#https://www.sportingnews.com/us/nba/news/nba-espn-tnt-tv-deal-adam-silver-lebron-james-media-agreement/tr4vopgnuw72zkuxz8jsdrce
-#https://www.sportsmediawatch.com/2014/10/nba-tv-deal-espn-abc-tnt-nine-year-deal-2025-24-billion-lockout/
+#append team abbreviations
+box_dat = read.csv(paste(path,"seas_dat.csv",sep="/"))
 
-#gate sales 21.57%
-#https://www.statista.com/statistics/193410/percentage-of-ticketing-revenue-in-the-nba-since-2006/
+team_ids = box_dat[,c("TEAM_ID", "TEAM_ABBREVIATION")]
+team_ids = distinct(team_ids)
 
-#total revenue $10.58B
-#https://www.statista.com/statistics/193467/total-league-revenue-of-the-nba-since-2005/
+home = team_ids
+colnames(home) = c("home_team_id", "home")
 
-#sponsorship $1.66B
-#https://www.statista.com/statistics/380270/nba-sponsorship-revenue/
+away = team_ids
+colnames(away) = c("away_team_ids", "away")
+
+game_tv = merge(game_tv, home, by = "home_team_id")
+game_tv = merge(game_tv, away, by = "away_team_ids")
+
+#append local tv market size
+local_tv = read.csv(paste(path,"local-tv-market-size.csv",sep="/"))
+
+home = local_tv
+colnames(home) = c("home", "home_tv_market")
+
+away = local_tv
+colnames(away) = c("away", "away_tv_market")
+
+game_tv = merge(game_tv, home, by = "home")
+game_tv = merge(game_tv, away, by = "away")
+
+#correct for national tv exclusive rights
+game_tv$home_tv_market = ifelse(
+  game_tv$tv %in% c("TNT", "ESPN", "ABC", "ABC/ESPN", "ESPN2"),
+  0,
+  game_tv$home_tv_market)
+
+game_tv$away_tv_market = ifelse(
+  game_tv$tv %in% c("TNT", "ESPN", "ABC", "ABC/ESPN", "ESPN2"),
+  0,
+  game_tv$away_tv_market)
+
+#append attendance figures
+game_attend = read.csv(paste(path,"attendance.csv",sep="/"))
+game_attend = game_attend[,-c(1)]
+
+#add missing data
+game_attend$game_id[ which( is.na(game_attend$attendance) ) ]
+
+#https://www.espn.com/nba/boxscore/_/gameId/401468211
+game_attend$attendance[game_attend$game_id == 22200056] = 19432
+
+#https://www.espn.com/nba/boxscore/_/gameId/401469246
+game_attend$attendance[game_attend$game_id == 22201091] = 18206
+
+game_tv = merge(game_tv, game_attend, by = "game_id")
+
+#append play-off indicators
+
+#western conference
+standings_west = read.csv(paste(path,"standings-west.csv",sep="/"))
+standings_west$X1st = str_trim(standings_west$X1st, "left")
+standings_west$X2nd = str_trim(standings_west$X2nd, "left")
+standings_west$X3rd = str_trim(standings_west$X3rd, "left")
+standings_west$X4th = str_trim(standings_west$X4th, "left")
+standings_west$X5th = str_trim(standings_west$X5th, "left")
+standings_west$X6th = str_trim(standings_west$X6th, "left")
+
+standings_west$Date = format(as.Date(standings_west$Date, "%m/%d/%Y"),
+                             format = "%m/%d/%Y")
+
+#clean odd BR abbreviations
+standings_west[standings_west == "PHO"] = "PHX"
+
+colnames(standings_west) = c("game_date", "firstW", "secondW", "thirdW",
+                             "fourthW", "fifthW", "sixthW")
+
+game_tv = merge(game_tv, standings_west, by = "game_date")#, all.x = TRUE)
+
+#eastern conference
+standings_east = read.csv(paste(path,"standings-east.csv",sep="/"))
+standings_east$X1st = str_trim(standings_east$X1st, "left")
+standings_east$X2nd = str_trim(standings_east$X2nd, "left")
+standings_east$X3rd = str_trim(standings_east$X3rd, "left")
+standings_east$X4th = str_trim(standings_east$X4th, "left")
+standings_east$X5th = str_trim(standings_east$X5th, "left")
+standings_east$X6th = str_trim(standings_east$X6th, "left")
+
+standings_east$Date = format(as.Date(standings_east$Date, "%m/%d/%Y"),
+                             format = "%m/%d/%Y")
+
+#clean odd BR abbreviations
+standings_east[standings_east == "BRK"] = "BKN"
+standings_east[standings_east == "CHO"] = "CHA"
+
+colnames(standings_east) = c("game_date", "firstE", "secondE", "thirdE",
+                             "fourthE", "fifthE", "sixthE")
+
+game_tv = merge(game_tv, standings_east, by = "game_date")
+
+home_ind = c()
+away_ind = c()
+for(g in c(1:nrow(game_tv))){
+  
+  away_team = game_tv$away[g]
+  home_team = game_tv$home[g]
+  play_off_teams = game_tv[g,c("firstW", "secondW", "thirdW",
+                               "fourthW", "fifthW", "sixthW",
+                               "firstE", "secondE", "thirdE",
+                               "fourthE", "fifthE", "sixthE")]
+  
+  home_ind = append(home_ind,
+                    1 * (home_team %in% play_off_teams))
+  
+  away_ind = append(away_ind,
+                    1 * (away_team %in% play_off_teams))
+  
+}
+
+game_tv$home_playoff_ind = home_ind
+game_tv$away_playoff_ind = away_ind
+
+#coefficient estimates
+
+#salary
+salary = read.csv(paste(path,"22.23_player_salary.csv",sep="/"))
+names(salary) = c("player", "salary")
+salary$salary = as.numeric(gsub('[$,]', '', salary$salary))
+total_sal = sum(salary$salary)
+play_off_alpha = (total_sal / sum(game_tv$home_playoff_ind + 
+                                    game_tv$away_playoff_ind))
+
+game_tv$play_off_pot =
+  (game_tv$home_playoff_ind + game_tv$away_playoff_ind) * play_off_alpha
 
 #make units easier to work with
 B = 1000000000
@@ -1081,48 +1324,40 @@ for(g in game_ids){
   game_val = append(game_val, cur_game_val)
 }
 
-tv = data.frame("GAME_ID" = game_ids,
-                "TV_AD_REV" = game_val)
+tv = data.frame("game_id" = game_ids,
+                "tv_ad_revenue" = game_val)
 
-#attendance
-path = "./clean_data"
-game_attend = read.csv(paste(path,"attendance.csv",sep="/"))
+game_tv = merge(game_tv, tv, by = "game_id")
 
-#add missing data
-game_attend$game_id[ which( is.na(game_attend$attendance) ) ]
-
-#https://www.espn.com/nba/boxscore/_/gameId/401468211
-game_attend$attendance[game_attend$game_id == 22200056] = 19432
-
-#https://www.espn.com/nba/boxscore/_/gameId/401469246
-game_attend$attendance[game_attend$game_id == 22201091] = 18206
-
-game_attend = data.frame("GAME_ID" = game_attend$game_id,
-                         "ATTEND" = game_attend$attendance)
-
-attendance = sum(game_attend$ATTEND)
+attendance = sum(game_tv$attendance)
 ticket = 10.58 * (B) * 0.2157 / (attendance)
 
-game_attend$GATE = ticket * game_attend$ATTEND
+game_tv$gate_revenue = game_tv$attendance * ticket
 
-game_attend = data.frame("GAME_ID" = game_attend$GAME_ID,
-                         "GATE" = game_attend$GATE)
+sgv = game_tv[,c("game_id", "home_tv_market",
+                 "away_tv_market", "tv_ad_revenue",
+                 "gate_revenue", "play_off_pot")]
 
-sgv = merge(tv, game_attend, by = "GAME_ID")
+#final SGVs
+sgv$TOTAL = sgv$home_tv_market +
+  sgv$away_tv_market +
+  sgv$tv_ad_revenue +
+  sgv$gate_revenue +
+  sgv$play_off_pot
 
-sgv$TOTAL = sgv$TV_AD_REV + sgv$GATE
+colnames(sgv)[colnames(sgv) == "game_id"] = "GAME_ID"
 
 write.csv(sgv, './results/single_game_val.csv')
 
-#c(alpha1, alpha2, alpha3, alpha4)
-alpha = c(ticket, espn, tnt, sponsor)
+#c(alpha1, alpha2, alpha3, alpha4, alpha5)
+alpha = c(ticket, espn, tnt, sponsor, play_off_alpha)
 
-data.frame("parameter" = c("a1", "a2", "a3", "a4"),
-           "description" = c("Ticket", "ESPN", "TNT", "Ad Rev"),
+data.frame("parameter" = c("a1", "a2", "a3", "a4", "a5"),
+           "description" = c("Ticket", "ESPN", "TNT", "Ad Rev", "Play-Off Pot"),
            "estimate" = format(round(alpha,2), big.mark=",", scientific=F, trim=T))
 
 #top 5 teams
-game_info = read.csv('./raw_data/2023regseason.csv')
+game_info = game_info = read.csv('./raw_data/2023regseason.csv')
 
 T1 = c()
 T2 = c()
@@ -1143,7 +1378,29 @@ for(t in teams){
   res[t,] = sum( sgv$TOTAL[(sgv$T1 == t | sgv$T2 == t)] )
 }
 
-res[order(res[,1], decreasing = TRUE),][1:5]/1000000
+res[order(res[,1], decreasing = TRUE),][1:10]/1000000
+
+
+#links to references used in manuscript
+#tv deal:
+#https://www.sportingnews.com/us/nba/news/nba-espn-tnt-tv-deal-adam-silver-lebron-james-media-agreement/tr4vopgnuw72zkuxz8jsdrce
+#https://www.sportsmediawatch.com/2014/10/nba-tv-deal-espn-abc-tnt-nine-year-deal-2025-24-billion-lockout/
+
+#gate sales 21.57%
+#https://www.statista.com/statistics/193410/percentage-of-ticketing-revenue-in-the-nba-since-2006/
+
+#total revenue $10.58B
+#https://www.statista.com/statistics/193467/total-league-revenue-of-the-nba-since-2005/
+
+#sponsorship $1.66B
+#https://www.statista.com/statistics/380270/nba-sponsorship-revenue/
+
+#toronto local tv market
+#https://www.statista.com/statistics/791905/leading-tv-markets-canada/
+
+#why only top six seeds (+ play-in format)
+#https://www.sportskeeda.com/basketball/5-lowest-seeds-ever-win-nba-championship
+
 
 ################################################################################
 ################################################################################
@@ -1298,7 +1555,7 @@ sgvs = read.csv('./results/single_game_val.csv')
 sgvs = sgvs[,-c(1)]
 
 #sgvs2 removes the 4 no tracking data games
-no_track = c(22200635, 22200678, 22201199, 22201214)
+no_track = c("22200635", "22200678", "22201199", "22201214")
 sgvs2 = sgvs[!(sgvs$GAME_ID %in% no_track),]
 sum(mean(sgvs2$TOTAL) * df$win_logit)
 sum(sgvs2$TOTAL)
@@ -1396,8 +1653,8 @@ table_df = data.frame("player" = results$player,
 plot(table_df$salary, table_df$ROI)
 #uncomment below function to search the plot, can customize
 #identify(table_df$salary, table_df$ROI)
-p_high = table_df$player[c(16,  17,  26,  30, 174, 176, 266, 274)]
-p_low = table_df$player[c(105, 172, 315, 382, 401)]
+p_high = table_df$player[c(16,  17,  23,  30, 174, 176, 308, 316, 236)]
+p_low = table_df$player[c(213, 226, 287, 381, 430, 444)]
 
 
 #average line for visual reference
@@ -1635,6 +1892,21 @@ exp_win = data.frame("team" = teams,"expW" = expW)
 exp_win[with(exp_win, order(-expW)), ]
 sum(exp_win$expW) #demonstrate no bias
 
+path = "./results"
+file = '2023regseason_BPM.csv'
+BPM_results = read.csv(paste(path,file,sep="/"))
+
+expW = c()
+teams = unique(BPM_results$TEAM_ABBREVIATION)
+for(t in teams){
+  expW = append(expW,
+                sum( BPM_results$game_BPM[BPM_results$TEAM_ABBREVIATION == t] ))
+}
+exp_win = data.frame("team" = teams,"expW" = expW)
+
+exp_win[with(exp_win, order(-expW)), ]
+sum(exp_win$expW) #demonstrate no bias
+
 ################################################################################
 ################################################################################
 ################################################################################
@@ -1839,17 +2111,83 @@ gs_DAT = data.frame("GAME_ID" = g_id,
 
 gs_DAT$link = paste(gs_DAT$GAME_ID, gs_DAT$OUTCOME, sep="_")
 
+path = "./results"
+file = '2023regseason_BPM.csv'
+
+BPM_results = read.csv(paste(path,file,sep="/"))
+
+#cleaned season data
+game_results = data.frame(
+  "GAME_ID" = seas_dat$GAME_ID,
+  "TEAM_ID" = seas_dat$TEAM_ABBREVIATION,
+  "PLAYER_ID" = seas_dat$PLAYER_NAME,
+  "PTS" = seas_dat$PTS
+)
+
+game_results$M_ID = paste(game_results$GAME_ID,
+                          game_results$TEAM_ID,
+                          game_results$PLAYER_ID,
+                          sep="_")
+
+BPM_results = data.frame("GAME_ID" = BPM_results$GAME_ID,
+                        "PLAYER_ID" = BPM_results$PLAYER_NAME,
+                        "TEAM_ID" = BPM_results$TEAM_ABBREVIATION,
+                        "BPM" = BPM_results$game_BPM)
+
+BPM_results$M_ID = paste(BPM_results$GAME_ID,
+                         BPM_results$TEAM_ID,
+                         BPM_results$PLAYER_ID,
+                        sep="_")
+
+BPM_results = data.frame("M_ID" = BPM_results$M_ID,
+                        "BPM" = BPM_results$BPM)
+
+log_df = merge(game_results, BPM_results, by = "M_ID")
+
+game_ids = unique(log_df$GAME_ID)
+
+win_loss = c()
+BPM_WL = c()
+g_id = c()
+
+for(g in game_ids){
+  
+  cur_game = subset(log_df, GAME_ID == g)
+  teams = unique(cur_game$TEAM_ID)
+  
+  p1 = sum(cur_game$PTS[cur_game$TEAM_ID == teams[1]])
+  p2 = sum(cur_game$PTS[cur_game$TEAM_ID == teams[2]])
+  
+  win_loss = append(win_loss,1*c(p1 > p2, p2 > p1))
+  
+  gs1 = sum(cur_game$BPM[cur_game$TEAM_ID == teams[1]])
+  gs2 = sum(cur_game$BPM[cur_game$TEAM_ID == teams[2]])
+  
+  BPM_WL = append(BPM_WL, c(gs1, gs2))
+  
+  g_id = append(g_id, c(g, g))
+  
+}
+
+bpm_DAT = data.frame("GAME_ID" = g_id,
+                    "OUTCOME" = win_loss,
+                    "BPM" = BPM_WL)
+
+bpm_DAT$link = paste(bpm_DAT$GAME_ID, bpm_DAT$OUTCOME, sep="_")
+
 dat1 = merge(wl_DAT, ws_DAT, by = "link")
 dat = merge(dat1, gs_DAT, by = "link")
+dat = merge(dat, bpm_DAT, by = "link")
 
 outcome = as.numeric(str_sub(dat$link,-1,-1))
 
 dat = data.frame("res" = outcome,
                  "wl" = dat$WL,
                  "ws" = dat$WS,
-                 "gs" = dat$GS)
+                 "gs" = dat$GS,
+                 "bpm" = dat$BPM)
 
-mod1 <- glm(res ~ wl + ws + gs, family=binomial, data=dat)
+mod1 <- glm(res ~ wl + ws + gs + bpm, family=binomial, data=dat)
 pscl::pR2(mod1)["McFadden"]
 summary(mod1)
 car::vif(mod1) #colinearity issue; GS and WS highly correlated
@@ -1858,11 +2196,12 @@ caret::varImp(mod1) #most important covariates
 
 #above is Table F3; bonus regressions below
 
-# df = scale(data.frame("wl" = dat$wl, "ws" = dat$ws, "gs" = dat$gs))
+# df = scale(data.frame("wl" = dat$wl, "ws" = dat$ws, "gs" = dat$gs,
+#                       "bpm" = dat$bpm))
 # df = as.data.frame(df)
 # df = cbind(outcome, df)
 # 
-# mod1 <- glm(outcome ~ wl + ws + gs, family=binomial, data=df)
+# mod1 <- glm(outcome ~ wl + ws + gs + bpm, family=binomial, data=df)
 # pscl::pR2(mod1)["McFadden"]
 # summary(mod1)
 # car::vif(mod1) #colinearity issue; GS and WS highly correlated
@@ -1883,7 +2222,14 @@ caret::varImp(mod1) #most important covariates
 # pscl::pR2(mod)["McFadden"] #still performs 'well'
 # caret::varImp(mod) #most important covariates
 # 
-# mod <- glm(res ~ ws + gs, family=binomial, data=dat)
+# mod <- glm(res ~ wl + bpm, family=binomial, data=dat)
+# summary(mod)
+# pscl::pR2(mod)["McFadden"]
+# car::vif(mod) #no colinearity issue
+# pscl::pR2(mod)["McFadden"] #still performs 'well'
+# caret::varImp(mod) #most important covariates
+# 
+# mod <- glm(res ~ ws + gs + bpm, family=binomial, data=dat)
 # summary(mod)
 # pscl::pR2(mod)["McFadden"]
 # car::vif(mod) #no colinearity issue
@@ -1904,22 +2250,32 @@ rm(list=ls())
 WS = read.csv('./results/PVWS.csv')
 WL = read.csv('./results/PVWL.csv')
 GS = read.csv('./results/PVGS.csv')
+BPM = read.csv('./results/PVBPM.csv')
 
-WL$percentile = rank(WL$PVWL) / length(WL$PVWL)
-WS$percentile = rank(WS$PVWS) / length(WS$PVWS)
-GS$percentile = rank(GS$PVGS) / length(GS$PVGS)
+WL$percentile.WL = rank(WL$PVWL) / length(WL$PVWL)
+WS$percentile.WS = rank(WS$PVWS) / length(WS$PVWS)
+GS$percentile.GS = rank(GS$PVGS) / length(GS$PVGS)
+BPM$percentile.BPM = rank(BPM$PVBPM) / length(BPM$PVBPM)
 
 full_dat = merge(WL, WS, by = "player")
 full_dat = merge(full_dat, GS, by = "player")
+full_dat = merge(full_dat, BPM, by = "player")
 
 comp_dat = data.frame(player = full_dat$player,
-                      WLp = full_dat$percentile.x,
-                      WSp = full_dat$percentile.y,
-                      GSp = full_dat$percentile)
+                      WLp = full_dat$percentile.WL,
+                      WSp = full_dat$percentile.WS,
+                      GSp = full_dat$percentile.GS,
+                      BPMp = full_dat$percentile.BPM)
 
 comp_dat$WL_WS = abs(comp_dat$WLp - comp_dat$WSp)
 comp_dat$WL_GS = abs(comp_dat$WLp - comp_dat$GSp)
+comp_dat$WL_BPM = abs(comp_dat$WLp - comp_dat$BPMp)
+
 comp_dat$WS_GS = abs(comp_dat$GSp - comp_dat$WSp)
+comp_dat$WS_BPM = abs(comp_dat$WSp - comp_dat$BPMp)
+
+comp_dat$GS_BPM = abs(comp_dat$GSp - comp_dat$BPMp)
+
 
 topX = 10
 top_df = subset(comp_dat,
@@ -1937,10 +2293,31 @@ top_df[with(top_df, order(-WL_GS)), ]
 
 topX = 10
 top_df = subset(comp_dat,
+                WL_BPM >= 
+                  quantile(WL_BPM,
+                           1 - topX/nrow(comp_dat)))
+top_df[with(top_df, order(-WL_BPM)), ]
+
+topX = 10
+top_df = subset(comp_dat,
                 WS_GS >= 
                   quantile(WS_GS,
                            1 - topX/nrow(comp_dat)))
 top_df[with(top_df, order(-WS_GS)), ]
+
+topX = 10
+top_df = subset(comp_dat,
+                WS_BPM >= 
+                  quantile(WS_BPM,
+                           1 - topX/nrow(comp_dat)))
+top_df[with(top_df, order(-WS_BPM)), ]
+
+topX = 10
+top_df = subset(comp_dat,
+                GS_BPM >= 
+                  quantile(GS_BPM,
+                           1 - topX/nrow(comp_dat)))
+top_df[with(top_df, order(-GS_BPM)), ]
 
 ################################################################################
 ################################################################################
@@ -1953,35 +2330,43 @@ top_df[with(top_df, order(-WS_GS)), ]
 ################################################################################
 
 rm(list=ls())
-#percentile scatterplots
 WS = read.csv('./results/PVWS.csv')
 WL = read.csv('./results/PVWL.csv')
 GS = read.csv('./results/PVGS.csv')
+BPM = read.csv('./results/PVBPM.csv')
 
-WL$percentile = rank(WL$PVWL) / length(WL$PVWL)
-WS$percentile = rank(WS$PVWS) / length(WS$PVWS)
-GS$percentile = rank(GS$PVGS) / length(GS$PVGS)
+WL$percentile.WL = rank(WL$PVWL) / length(WL$PVWL)
+WS$percentile.WS = rank(WS$PVWS) / length(WS$PVWS)
+GS$percentile.GS = rank(GS$PVGS) / length(GS$PVGS)
+BPM$percentile.BPM = rank(BPM$PVBPM) / length(BPM$PVBPM)
 
 full_dat = merge(WL, WS, by = "player")
 full_dat = merge(full_dat, GS, by = "player")
+full_dat = merge(full_dat, BPM, by = "player")
 
 comp_dat = data.frame(player = full_dat$player,
-                      WLp = full_dat$percentile.x,
-                      WSp = full_dat$percentile.y,
-                      GSp = full_dat$percentile)
+                      WLp = full_dat$percentile.WL,
+                      WSp = full_dat$percentile.WS,
+                      GSp = full_dat$percentile.GS,
+                      BPMp = full_dat$percentile.BPM)
 
-y_val = c(comp_dat$WLp, comp_dat$WLp, comp_dat$WLp,
-          comp_dat$WSp, comp_dat$WSp, comp_dat$WSp,
-          comp_dat$GSp, comp_dat$GSp, comp_dat$GSp)
-x_val = c(comp_dat$WLp, comp_dat$WSp, comp_dat$GSp,
-          comp_dat$WLp, comp_dat$WSp, comp_dat$GSp,
-          comp_dat$WLp, comp_dat$WSp, comp_dat$GSp)
-y_key = c(rep("PVWL", 3 * nrow(comp_dat)),
-          rep("PVWS", 3 * nrow(comp_dat)),
-          rep("PVGS", 3 * nrow(comp_dat)))
-x_key = c(rep("PVWL", nrow(comp_dat)), rep("PVWS", nrow(comp_dat)), rep("PVGS", nrow(comp_dat)),
-          rep("PVWL", nrow(comp_dat)), rep("PVWS", nrow(comp_dat)), rep("PVGS", nrow(comp_dat)),
-          rep("PVWL", nrow(comp_dat)), rep("PVWS", nrow(comp_dat)), rep("PVGS", nrow(comp_dat)))
+y_val = c(comp_dat$WLp, comp_dat$WLp, comp_dat$WLp, comp_dat$WLp,
+          comp_dat$WSp, comp_dat$WSp, comp_dat$WSp, comp_dat$WSp,
+          comp_dat$GSp, comp_dat$GSp, comp_dat$GSp, comp_dat$GSp,
+          comp_dat$BPMp, comp_dat$BPMp, comp_dat$BPMp, comp_dat$BPMp)
+x_val = c(comp_dat$WLp, comp_dat$WSp, comp_dat$GSp, comp_dat$BPMp,
+          comp_dat$WLp, comp_dat$WSp, comp_dat$GSp, comp_dat$BPMp,
+          comp_dat$WLp, comp_dat$WSp, comp_dat$GSp, comp_dat$BPMp,
+          comp_dat$WLp, comp_dat$WSp, comp_dat$GSp, comp_dat$BPMp)
+y_key = c(rep("PVWL", 4 * nrow(comp_dat)),
+          rep("PVWS", 4 * nrow(comp_dat)),
+          rep("PVGS", 4 * nrow(comp_dat)),
+          rep("PVBPM", 4 * nrow(comp_dat)))
+x_key = c(
+  rep("PVWL", nrow(comp_dat)), rep("PVWS", nrow(comp_dat)), rep("PVGS", nrow(comp_dat)), rep("PVBPM", nrow(comp_dat)),
+  rep("PVWL", nrow(comp_dat)), rep("PVWS", nrow(comp_dat)), rep("PVGS", nrow(comp_dat)), rep("PVBPM", nrow(comp_dat)),
+  rep("PVWL", nrow(comp_dat)), rep("PVWS", nrow(comp_dat)), rep("PVGS", nrow(comp_dat)), rep("PVBPM", nrow(comp_dat)),
+  rep("PVWL", nrow(comp_dat)), rep("PVWS", nrow(comp_dat)), rep("PVGS", nrow(comp_dat)), rep("PVBPM", nrow(comp_dat)))
 
 plot_dat = data.frame("y_val" = y_val, "x_val" = x_val,
                       "y_key" = as.factor(y_key),
@@ -2037,6 +2422,139 @@ alpha = 1
 beta = 1
 set.seed(10)
 X = rgamma(n * num_play, alpha, beta)
+
+play_time = c()
+for(j in c(1:(n))){
+  set.seed(j)
+  #num plyrs team 1
+  T1 = rep(0,(num_play/2))
+  k1 = sample(c(1:(num_play/2)), 1)
+  T1[1:k1] = 1
+  #num plyrs team 2
+  set.seed(n * j + 1)
+  T2 = rep(0,(num_play/2))
+  k2 = sample(c(1:(num_play/2)), 1)
+  T2[1:k2] = 1
+  
+  play_time = append(play_time, c(T1, T2))
+  
+}
+
+sim_data = data.frame("game" = game_number,
+                      "team" = team,
+                      "Delta" = X,
+                      "play" = play_time)
+
+#calculate 'natural share'
+for(j in c(1:n)){
+  p = sim_data$play[sim_data$game == j]
+  l = sim_data$Delta[sim_data$game == j]
+  N = sum(p * l)
+  
+  start = 1 + (j - 1) * num_play
+  end = j * num_play
+  for(k in c(start:end)){
+    sim_data$nat_share[k] = ((sim_data$Delta[k] * sim_data$play[k]) / N) #* sim_data$sgv[k]
+  }
+  
+}
+
+m_star = sum(sim_data$play)
+m_bar = m_star / (n)
+
+Dgm = sim_data$Delta[sim_data$play == 1]
+
+D_bar = (1/m_star) * sum( Dgm )
+sD = sqrt( (1/(m_star - 1)) * sum( (Dgm - D_bar)^2 ) )
+
+calc_dat = sim_data[(sim_data$play == 1),]
+
+#calculate WRMS
+calc_dat$W = (1/sD) * (calc_dat$Delta - D_bar) * (1/m_bar) + (1/m_bar)
+
+#calculate bias
+calc_dat$bias = calc_dat$W - calc_dat$nat_share
+
+#confirm consistency
+summary(calc_dat$bias)
+
+#theorem 2.1 without independence
+rm(list=ls())
+
+#generating correlated data
+library(MASS)
+library(matrixcalc)
+library(corpcor)
+library(tmvtnorm)
+
+#team correlation matrix
+#each team positively correlated w each other
+#each team negatively correlated w opponent
+sigma = matrix(NA, nrow = 10, ncol = 10)
+sigma[1,] = c(1, 0.2, 0.4, 0.6, 0.8, -0.9, -0.7, -0.5, -0.3, -0.1)
+sigma[,1] = c(1, 0.2, 0.4, 0.6, 0.8, -0.9, -0.7, -0.5, -0.3, -0.1)
+sigma[2, 2:10] = c(1, 0.1, 0.2, 0.3, -0.8, -0.6, -0.4, -0.2, -0.1)
+sigma[2:10, 2] = c(1, 0.1, 0.2, 0.3, -0.8, -0.6, -0.4, -0.2, -0.1)
+sigma[3, 3:10] = c(1, 0.85, 0.75, -0.85, -0.65, -0.45, -0.35, -0.15)
+sigma[3:10, 3] = c(1, 0.85, 0.75, -0.85, -0.65, -0.45, -0.35, -0.15)
+sigma[4, 4:10] = c(1, 0.5, -0.25, -0.35, -0.45, -0.45, -0.85)
+sigma[4:10, 4] = c(1, 0.5, -0.25, -0.35, -0.45, -0.45, -0.85)
+sigma[5, 5:10] = c(1, -0.5, -0.4, -0.3, -0.2, -0.1)
+sigma[5:10, 5] = c(1, -0.5, -0.4, -0.3, -0.2, -0.1)
+sigma[6:10, 6] = c(1, 0.7, 0.5, 0.3, 0.1)
+sigma[6, 6:10] = c(1, 0.7, 0.5, 0.3, 0.1)
+sigma[7:10, 7] = c(1, 0.2, 0.4, 0.8)
+sigma[7, 7:10] = c(1, 0.2, 0.4, 0.8)
+sigma[8:10, 8] = c(1, 0.90, 0.40)
+sigma[8, 8:10] = c(1, 0.90, 0.40)
+sigma[9:10, 9] = c(1, 0.35)
+sigma[9, 9:10] = c(1, 0.35)
+sigma[10, 10] = 1
+
+is.positive.definite(sigma)
+sigma = make.positive.definite(sigma)
+
+for(k in c(1:10)){
+  sigma[k,k] = 2
+}
+
+is.positive.definite(sigma)
+isSymmetric(sigma)
+
+mu = rep(1, 10)
+
+
+#each row is a game!
+set.seed(5)
+df<-as.data.frame(mvrnorm(n=1000, mu=mu, Sigma=sigma))
+colnames(df) = c("A1", "A2", "A3", "A4", "A5",
+                 "B1", "B2", "B3", "B4", "B5")
+
+#confirm sim variables not independent
+cov(df)
+
+X = c()
+for(k in c(1:1000)){
+  X = append(X, as.numeric(df[k,]))
+}
+
+
+#number of games
+n = 1000
+num_play = 10
+
+game_number = c()
+for(k in c(1:n)){
+  game_number = append(game_number, rep(k, num_play))
+}
+
+team = rep(c(rep("A",(num_play/2)), rep("B",(num_play/2))),n)
+
+#performance RV is exp(1)
+#alpha = 1
+#beta = 1
+#set.seed(10)
+#X = rgamma(n * num_play, alpha, beta)
 
 play_time = c()
 for(j in c(1:(n))){
