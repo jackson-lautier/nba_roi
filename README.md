@@ -2,6 +2,10 @@
 
 <p align="center"><project-description></p>
 
+## UPDATE 2025 January 09
+
+_The manuscript is currently undergoing revision.  The results of this repository are in the process of being updated.  For the last stable version, use any commit before 2025 Jan 09.  Once revisions are complete, this message will be removed._
+
 ## Introduction
 
 This repository is intended as an online supplement to the manuscript,
