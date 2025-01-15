@@ -2240,6 +2240,348 @@ caret::varImp(mod1) #most important covariates
 ################################################################################
 ################################################################################
 ################################################################################
+# Table FXX - Illustrative Example
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+
+rm(list=ls())
+
+seas_dat_clean = read.csv('./clean_data/seas_dat_clean.csv')
+seas_dat_clean = seas_dat_clean[,-1]
+
+#examine all fields to find 'winning' fields
+game_ids = unique(seas_dat_clean$GAME_ID)
+win_loss = c() #for game outcome
+
+flds = list(
+  FG2O = c(), 
+  FG2X = c(), 
+  FG3O = c(), 
+  FG3X = c(),
+  FTMO = c(), 
+  FTMX = c(),
+  PF = c(),
+  AORB = c(),
+  ADRB = c(),
+  STL = c(),
+  BLK = c(),
+  TOV = c(),
+  BLKA = c(),
+  PFD = c(),
+  AST = c(), 
+  SAST = c(), 
+  DEFL = c(),
+  CHGD = c(),
+  AC2P = c(),
+  C3P = c(),
+  OBOX = c(),
+  DBOX = c(),
+  OLBR = c(),
+  DLBR = c(),
+  DFGO = c(), 
+  DFGX = c(),
+  DRV = c(),
+  ODIS = c(),
+  DDIS = c(),
+  APM = c(),
+  AST2 = c(), 
+  FAST = c(),
+  OCRB = c(),
+  AORC = c(),
+  DCRB = c(),
+  ADRC = c()
+)
+
+#confirm all fields included except PTS
+names(seas_dat_clean)[which(names(seas_dat_clean) %in% names(flds) == FALSE)]
+
+#create the team level logistic regression data
+for(g in game_ids){
+  
+  cur_game = subset(seas_dat_clean, GAME_ID == g)
+  teams = unique(cur_game$TEAM_ID)
+  
+  #game outcome
+  p1 = sum(cur_game$PTS[cur_game$TEAM_ID == teams[1]])
+  p2 = sum(cur_game$PTS[cur_game$TEAM_ID == teams[2]])
+  
+  win_loss = append(win_loss,1*c(p1 > p2, p2 > p1))
+  
+  #team stats
+  for(j in c(1:length(flds))){
+    
+    f_name = names(flds)[j]
+    tot1 = sum( cur_game[cur_game$TEAM_ID == teams[1], f_name])
+    tot2 = sum( cur_game[cur_game$TEAM_ID == teams[2], f_name])
+    
+    flds[[j]] = append(flds[[j]], c(tot1, tot2))
+    
+  }
+  
+}
+
+team_df = do.call(cbind,flds)
+team_df = as.data.frame(team_df)
+#center data to create average team interpretation
+team_df = scale(team_df, scale=FALSE)
+team_df = as.data.frame(team_df)
+
+team_df$OUTCOME = win_loss
+
+#full model with all 'possible' fields
+model <- glm(OUTCOME~., family="binomial", data=team_df)
+
+#Table B.1. for paper online appendix/supplement
+sum = summary(model)
+as.data.frame(sum$coefficients)
+
+#get significant coefficients
+sig = 1*(as.vector(sum$coefficients[,'Pr(>|z|)']) < 0.10)
+keep = as.data.frame(sum$coefficients)[(sig == 1),]
+rownames(keep)
+
+kill1 = rownames(as.data.frame(sum$coefficients)[(sig == 0),])
+kill1 = kill1[-1] #remove intercept
+
+# establish the final model from above results
+game_ids = unique(seas_dat_clean$GAME_ID)
+win_loss = c() #for game outcome
+
+flds = list(
+  FG2O = c(), 
+  FG2X = c(), 
+  FG3O = c(), 
+  FG3X = c(),
+  FTMO = c(), 
+  FTMX = c(),
+  PF = c(),
+  AORB = c(),
+  ADRB = c(),
+  STL = c(),
+  BLK = c(),
+  TOV = c(),
+  BLKA = c(),
+  PFD = c(),
+  AST = c(), 
+  SAST = c(), 
+  DEFL = c(),
+  CHGD = c(),
+  AC2P = c(),
+  C3P = c(),
+  OBOX = c(),
+  DBOX = c(),
+  OLBR = c(),
+  DLBR = c(),
+  DFGO = c(), 
+  DFGX = c(),
+  DRV = c(),
+  ODIS = c(),
+  DDIS = c(),
+  APM = c(),
+  AST2 = c(), 
+  FAST = c(),
+  OCRB = c(),
+  AORC = c(),
+  DCRB = c(),
+  ADRC = c()
+)
+
+#remove non-significant fields
+flds = within(flds, rm(list=kill1))
+
+#get illustrative game
+g = 22200001
+
+cur_game = subset(seas_dat_clean, GAME_ID == g)
+teams = unique(cur_game$TEAM_ID)
+
+#game outcome
+p1 = sum(cur_game$PTS[cur_game$TEAM_ID == teams[1]])
+p2 = sum(cur_game$PTS[cur_game$TEAM_ID == teams[2]])
+
+win_loss = 1*c(p1 > p2, p2 > p1)
+
+#team stats
+for(j in c(1:length(flds))){
+  
+  f_name = names(flds)[j]
+  tot1 = sum( cur_game[cur_game$TEAM_ID == teams[1], f_name])
+  tot2 = sum( cur_game[cur_game$TEAM_ID == teams[2], f_name])
+  
+  flds[[j]] = append(flds[[j]], c(tot1, tot2))
+  
+}
+
+team_df = do.call(cbind,flds)
+team_df = as.data.frame(team_df)
+
+cur_game = subset(cur_game, select = c("GAME_ID", "TEAM_ABBREVIATION",
+                                       "PLAYER_NAME", "PTS",
+                                       colnames(team_df)))
+team_df$GAME_ID = 22200001
+team_df$TEAM_ABBREVIATION = c("PHI", "BOS")
+team_df$PLAYER_NAME = "Team Totals"
+team_df$PTS = team_df$FG2O * 2 + team_df$FG3O * 3 + team_df$FTMO * 1
+
+cur_game = rbind(cur_game, team_df)
+write.csv(cur_game, "./results/phi_bos_game.csv")
+
+#to get weights on W/L importance
+for(g in game_ids){
+  
+  cur_game = subset(seas_dat_clean, GAME_ID == g)
+  teams = unique(cur_game$TEAM_ID)
+  
+  #game outcome
+  p1 = sum(cur_game$PTS[cur_game$TEAM_ID == teams[1]])
+  p2 = sum(cur_game$PTS[cur_game$TEAM_ID == teams[2]])
+  
+  win_loss = append(win_loss,1*c(p1 > p2, p2 > p1))
+  
+  #team stats
+  for(j in c(1:length(flds))){
+    
+    f_name = names(flds)[j]
+    tot1 = sum( cur_game[cur_game$TEAM_ID == teams[1], f_name])
+    tot2 = sum( cur_game[cur_game$TEAM_ID == teams[2], f_name])
+    
+    flds[[j]] = append(flds[[j]], c(tot1, tot2))
+    
+  }
+  
+}
+
+team_df = do.call(cbind,flds)
+team_df = as.data.frame(team_df)
+team_df = scale(team_df, scale = FALSE)
+team_df = as.data.frame(team_df)
+
+team_df$OUTCOME = win_loss
+
+#get centered illustrative game
+cur_game_scale = team_df[1:2,]
+cur_game_scale$TEAM = c("PHI", "BOS")
+
+
+#winLogit model
+model <- glm(OUTCOME~., family="binomial", data=team_df)
+summary(model)
+
+#winLogit model without intercept
+model <- glm(OUTCOME ~ . - 1, family="binomial", data=team_df)
+#summary of model with all significant fields
+#Table 1
+sum = summary(model)
+as.data.frame(sum$coefficients)
+
+#now get player level calculations
+games = unique(seas_dat_clean$GAME_ID)
+
+#create dummy active player
+df_15 = seas_dat_clean[1,]
+df_15[1,"PLAYER_NAME"] = "Active Player"
+df_15[1,"PLAYER_ID"] = 9999999
+df_15[1,"GAME_ID"] = 99999999
+
+#make sure each game has 15 active players
+start.time <- Sys.time()
+for(g in games){
+  
+  cur_game = subset(seas_dat_clean, GAME_ID == g)
+  teams = unique(cur_game$TEAM_ID)
+  
+  df1 = subset(cur_game, TEAM_ID == teams[1])
+  num_row_add = max(0,15 - nrow(df1))
+  
+  if(num_row_add > 0){
+    add_row = df1[nrow(df1),]
+    add_row$PLAYER_ID = 9999999
+    add_row$PLAYER_NAME = "Active Player"
+    add_row[,6:42] = 0
+    
+    for(r in c(1:num_row_add)){
+      df1 = rbind(df1, add_row)
+    }
+  }
+  
+  df2 = subset(cur_game, TEAM_ID == teams[2])
+  num_row_add = max(0,15 - nrow(df2))
+  
+  if(num_row_add > 0){
+    add_row = df2[nrow(df2),]
+    add_row$PLAYER_ID = 9999999
+    add_row$PLAYER_NAME = "Active Player"
+    add_row[,6:42] = 0
+    
+    for(r in c(1:num_row_add)){
+      df2 = rbind(df2, add_row)
+    }
+  }
+  
+  cur_df15 = rbind(df1, df2)
+  
+  df_15 = rbind(df_15, cur_df15)
+  
+}
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
+
+df_15 = df_15[-1,]
+
+df_15_scale = scale(df_15[,6:42], center = TRUE, scale = FALSE)
+df_15[,6:42] = df_15_scale
+
+cur_game_scale_players = df_15[df_15$GAME_ID == 22200001,]
+
+cur_game_scale_players = subset(cur_game_scale_players,
+                                select = c("GAME_ID", "TEAM_ABBREVIATION",
+                                           "PLAYER_NAME", "PTS",
+                                           colnames(team_df)[1:24]))
+
+model_prob = predict(model, cur_game_scale_players, type = "response")
+wLogit = logit(model_prob)
+cur_game_scale_players$game_prob = model_prob
+cur_game_scale_players$game_logit = wLogit
+
+#check Thm 2.2
+bos = c()
+phi = c()
+for(j in c(1:length(flds))){
+  
+  f_name = names(flds)[j]
+  bos = append(bos,
+               sum(
+                 cur_game_scale_players[cur_game_scale_players$TEAM_ABBREVIATION == "BOS", f_name]))
+  phi = append(phi,
+               sum(
+                 cur_game_scale_players[cur_game_scale_players$TEAM_ABBREVIATION == "PHI", f_name]))
+  
+}
+
+#check, should be very close to zero
+abs(cur_game_scale[1,1:24] - phi)
+abs(cur_game_scale[2,1:24] - bos)
+
+#check, should be very close to each other
+logit(predict(model, cur_game_scale, type = "response"))
+as.numeric(model$coefficients) %*% as.numeric(team_df[1,1:24])
+as.numeric(model$coefficients) %*% as.numeric(team_df[2,1:24])
+sum(cur_game_scale_players$game_logit[cur_game_scale_players$TEAM_ABBREVIATION == "PHI"])
+sum(cur_game_scale_players$game_logit[cur_game_scale_players$TEAM_ABBREVIATION == "BOS"])
+
+#tobias harris
+as.numeric(cur_game_scale_players[1,5:28]) %*% as.numeric(model$coefficients)
+
+write.csv(cur_game_scale_players, "./results/phi_bos_game_player_scale.csv")
+
+
+################################################################################
+################################################################################
+################################################################################
+################################################################################
 # Table G1 - Team Level Models and Wins
 ################################################################################
 ################################################################################
