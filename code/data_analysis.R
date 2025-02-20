@@ -1678,8 +1678,8 @@ nbaplot <- nbaplot +
                    aes(x=salary, y = ROI, label = player),
                    box.padding   = 0.35, 
                    point.padding = 0.5,
-                   nudge_y = 0.04,
-                   nudge_x = 0.4,
+                   nudge_y = 0.07,
+                   nudge_x = 0.5,
                    segment.color = 'grey50',
                    family = "Times New Roman",
                    size = 2)
@@ -1689,8 +1689,8 @@ nbaplot <- nbaplot +
                    aes(x=salary, y = ROI, label = player),
                    box.padding   = 0.35, 
                    point.padding = 0.5,
-                   nudge_y = -0.04,
-                   nudge_x = -0.4,
+                   nudge_y = -0.07,
+                   nudge_x = -0.5,
                    segment.color = 'grey50',
                    family = "Times New Roman",
                    size = 2)
@@ -1728,6 +1728,23 @@ position_CV = pos_sd$x / pos_mean$x
 
 data.frame("position" = pos_mean$Group.1,
            "CV" = position_CV)
+
+#replacement player calculations
+df_15 = read.csv("./results/2023regseason_WL.csv")
+
+m_star = nrow(df_15)
+m_bar = m_star / length(unique(df_15$GAME_ID))
+
+sgv = read.csv("./results/single_game_val.csv")
+mean_sgv = mean(sgv$TOTAL)
+
+rp_cf = mean_sgv * (1 / m_bar)
+
+length(unique(df_15$PLAYER_NAME))
+
+mean_sal = mean(sal_dat$SALARY)
+
+100 * irr(c(-mean_sal, rep(1,82)*rp_cf), interval = NULL, cf.freq = 1)
 
 ################################################################################
 ################################################################################
@@ -2188,53 +2205,53 @@ dat = data.frame("res" = outcome,
                  "bpm" = dat$BPM)
 
 mod1 <- glm(res ~ wl + ws + gs + bpm, family=binomial, data=dat)
-pscl::pR2(mod1)["McFadden"]
 summary(mod1)
 car::vif(mod1) #colinearity issue; GS and WS highly correlated
 pscl::pR2(mod1)["McFadden"] #still performs 'well'
 caret::varImp(mod1) #most important covariates
 
 #above is Table F3; bonus regressions below
+#scaling makes little difference to conclusion
 
-# df = scale(data.frame("wl" = dat$wl, "ws" = dat$ws, "gs" = dat$gs,
-#                       "bpm" = dat$bpm))
-# df = as.data.frame(df)
-# df = cbind(outcome, df)
-# 
-# mod1 <- glm(outcome ~ wl + ws + gs + bpm, family=binomial, data=df)
-# pscl::pR2(mod1)["McFadden"]
-# summary(mod1)
-# car::vif(mod1) #colinearity issue; GS and WS highly correlated
-# pscl::pR2(mod1)["McFadden"] #still performs 'well'
-# caret::varImp(mod1) #most important covariates
-# 
-# mod <- glm(res ~ wl + ws, family=binomial, data=dat)
-# summary(mod)
-# pscl::pR2(mod)["McFadden"]
-# car::vif(mod) #no colinearity issue
-# pscl::pR2(mod)["McFadden"] #still performs 'well'
-# caret::varImp(mod) #most important covariates
-# 
-# mod <- glm(res ~ wl + gs, family=binomial, data=dat)
-# summary(mod)
-# pscl::pR2(mod)["McFadden"]
-# car::vif(mod) #no colinearity issue
-# pscl::pR2(mod)["McFadden"] #still performs 'well'
-# caret::varImp(mod) #most important covariates
-# 
-# mod <- glm(res ~ wl + bpm, family=binomial, data=dat)
-# summary(mod)
-# pscl::pR2(mod)["McFadden"]
-# car::vif(mod) #no colinearity issue
-# pscl::pR2(mod)["McFadden"] #still performs 'well'
-# caret::varImp(mod) #most important covariates
-# 
-# mod <- glm(res ~ ws + gs + bpm, family=binomial, data=dat)
-# summary(mod)
-# pscl::pR2(mod)["McFadden"]
-# car::vif(mod) #no colinearity issue
-# pscl::pR2(mod)["McFadden"] #still performs 'well'
-# caret::varImp(mod) #most important covariates
+df = scale(data.frame("wl" = dat$wl, "ws" = dat$ws, "gs" = dat$gs,
+                      "bpm" = dat$bpm))
+df = as.data.frame(df)
+df = cbind(outcome, df)
+
+mod1 <- glm(outcome ~ wl + ws + gs + bpm, family=binomial, data=df)
+pscl::pR2(mod1)["McFadden"]
+summary(mod1)
+car::vif(mod1) #colinearity issue; GS and WS highly correlated
+pscl::pR2(mod1)["McFadden"] #still performs 'well'
+caret::varImp(mod1) #most important covariates
+
+mod <- glm(res ~ wl + ws, family=binomial, data=dat)
+summary(mod)
+pscl::pR2(mod)["McFadden"]
+car::vif(mod) #no colinearity issue
+pscl::pR2(mod)["McFadden"] #still performs 'well'
+caret::varImp(mod) #most important covariates
+
+mod <- glm(res ~ wl + gs, family=binomial, data=dat)
+summary(mod)
+pscl::pR2(mod)["McFadden"]
+car::vif(mod) #no colinearity issue
+pscl::pR2(mod)["McFadden"] #still performs 'well'
+caret::varImp(mod) #most important covariates
+
+mod <- glm(res ~ wl + bpm, family=binomial, data=dat)
+summary(mod)
+pscl::pR2(mod)["McFadden"]
+car::vif(mod) #no colinearity issue
+pscl::pR2(mod)["McFadden"] #still performs 'well'
+caret::varImp(mod) #most important covariates
+
+mod <- glm(res ~ ws + gs + bpm, family=binomial, data=dat)
+summary(mod)
+pscl::pR2(mod)["McFadden"]
+car::vif(mod) #no colinearity issue
+pscl::pR2(mod)["McFadden"] #still performs 'well'
+caret::varImp(mod) #most important covariates
 
 ################################################################################
 ################################################################################
