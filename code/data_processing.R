@@ -7,7 +7,7 @@
 #     Player Salaries in the National Basketball Association"
 #
 # LAUTIER
-# 2024
+# 2025
 #
 #R version 4.3.2 (2023-10-31 ucrt)
 #RStudio 2023.03.0+386 "Cherry Blossom" Release
@@ -27,7 +27,7 @@
 #folder 'processed_data' in the wd.
 #For data analysis, proceed directly to 'data_analysis.R'.
 #
-#The figure and table references correspond to the May 2024 version
+#The figure and table references correspond to the Feb 2025 version
 #of the working manuscript.  While the order of figures are subject to
 #change, the figures themselves are likely to remain stable.
 #

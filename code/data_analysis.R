@@ -7,7 +7,7 @@
 #     Player Salaries in the National Basketball Association"
 #
 # LAUTIER
-# 2024
+# 2025
 #
 #R version 4.3.2 (2023-10-31 ucrt)
 #RStudio 2023.03.0+386 "Cherry Blossom" Release
@@ -19,15 +19,20 @@
 # INSTRUCTIONS
 #
 #supporting files:
-#   seas_dat_clean.csv      #cleaned WL data
-#   seas_dat.csv            #cleaned WS, GS data
-#   player_positions.csv    #player position data
-#   22.23_player_salary.csv #player salary data
-#   game_tv.csv             #televised game information
-#   attendance.csv          #attendance figures
+#   seas_dat_clean.csv      	#cleaned WL data
+#   seas_dat.csv            	#cleaned WS, GS data
+#   seas_dat_bpm.csv	    	#clean BPM data	
+#   player_positions.csv    	#player position data
+#   22.23_player_salary.csv 	#player salary data
+#   game_tv.csv             	#televised game information
+#   attendance.csv          	#attendance figures
+#   local-tv-market-size.csv 	#local tv market size
+#   standings-west.csv		#western conference standings
+#   standings-east.csv		#eastern conference standings
+#   /raw_data/2023regseason.csv #team information
 #
 #
-#The figure and table references correspond to the May 2024 version
+#The figure and table references correspond to the Feb 2025 version
 #of the working manuscript.  While the order of figures are subject to
 #change, the figures themselves are likely to remain stable.
 #
@@ -43,6 +48,10 @@ require(jrvFinance) #IRR calculations
 require('cowplot') #grid plots
 require(stringr) #logistic regression data manipulation
 require(ggrepel) #label ggplot ROI by salary
+require(MASS) #generating correlated data
+require(matrixcalc) #generating correlated data
+require(corpcor) #generating correlated data
+require(tmvtnorm) #generating correlated data
 ######################################################################################
 ######################################################################################
 ######################################################################################
@@ -2839,12 +2848,6 @@ summary(calc_dat$bias)
 
 #theorem 2.1 without independence
 rm(list=ls())
-
-#generating correlated data
-library(MASS)
-library(matrixcalc)
-library(corpcor)
-library(tmvtnorm)
 
 #team correlation matrix
 #each team positively correlated w each other

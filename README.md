@@ -2,16 +2,12 @@
 
 <p align="center"><project-description></p>
 
-## UPDATE 2025 January 09
-
-_The manuscript is currently undergoing revision.  The results of this repository are in the process of being updated.  For the last stable version, use any commit before 2025 Jan 09.  Once revisions are complete, this message will be removed._
-
 ## Introduction
 
 This repository is intended as an online supplement to the manuscript,
 _A new framework to estimate return on investment for player salaries
 in the National Basketball Association_.  The latest version of the
-manuscript may be found [here](https://img1.wsimg.com/blobby/go/e126e6bc-09bb-4685-8200-323fe6a91322/downloads/nba_roi_0529.pdf?ver=1716982653343).
+manuscript may be found [here](https://img1.wsimg.com/blobby/go/e126e6bc-09bb-4685-8200-323fe6a91322/downloads/bbac1e70-ab77-4e31-b889-58f480e69dbd/asmbi_feb_2025.pdf?ver=1740066029766).
 Please attribute any citations of this repository to the latest
 version of the manuscript.
 
@@ -32,7 +28,7 @@ query wrapping not provided.
 
 - [Repo](https://github.com/jackson-lautier/nba_roi)
 
-- [Latest Manuscript](https://img1.wsimg.com/blobby/go/e126e6bc-09bb-4685-8200-323fe6a91322/downloads/nba_roi_0529.pdf?ver=1716982653343)
+- [Latest Manuscript](https://img1.wsimg.com/blobby/go/e126e6bc-09bb-4685-8200-323fe6a91322/downloads/bbac1e70-ab77-4e31-b889-58f480e69dbd/asmbi_feb_2025.pdf?ver=1740066029766)
 
 - [arXiv](https://arxiv.org/abs/2309.05783) [HISTORICAL VERSION]
 
