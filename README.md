@@ -16,9 +16,7 @@ Historical versions: [arXiv](https://arxiv.org/abs/2309.05783).
 
 This repository includes:
 
-- **raw_data** The raw 2022-2023 NBA regular season game-by-game data downloaded with
-a custom query wrapping around [nba_api](https://github.com/swar/nba_api).  Custom
-query wrapping not provided.
+- **raw_data** All downloaded data corresponding to the 2022-2023 NBA regular season.  It was scraped from various web sources.  The scraping code is not supplied but details are available in the manuscript.
 
 - **clean_data** Cleaned data used to generate all results in the reference manuscript. May be replicated using the data processing script.
 
