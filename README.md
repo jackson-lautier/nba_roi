@@ -4,12 +4,23 @@
 
 ## Introduction
 
-This repository is intended as an online supplement to the manuscript,
+This repository is intended as an online supplement to the manuscript:
 
 Lautier, J.P. (2025). A New Framework to Estimate Return on Investment for Player Salaries in the National Basketball Association. Appl Stochastic Models Bus Ind, 41: e70020. [https://doi.org/10.1002/asmb.70020](https://doi.org/10.1002/asmb.70020)
 
 
-Please attribute any citations of this repository to the above.
+To cite this repository, it is requested to please cite the published manuscript (see above) or use the following BibTex:
+
+@article{https://doi.org/10.1002/asmb.70020,
+author = {Lautier, Jackson P.},
+title = {A New Framework to Estimate Return on Investment for Player Salaries in the National Basketball Association},
+journal = {Applied Stochastic Models in Business and Industry},
+volume = {41},
+number = {3},
+pages = {e70020},
+year = {2025}
+}
+
 
 Historical versions: [arXiv](https://arxiv.org/abs/2309.05783).
 
