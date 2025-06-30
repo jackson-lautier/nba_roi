@@ -5,11 +5,11 @@
 ## Introduction
 
 This repository is intended as an online supplement to the manuscript,
-_A new framework to estimate return on investment for player salaries
-in the National Basketball Association_.  The latest version of the
-manuscript may be found [here](https://img1.wsimg.com/blobby/go/e126e6bc-09bb-4685-8200-323fe6a91322/downloads/bbac1e70-ab77-4e31-b889-58f480e69dbd/asmbi_feb_2025.pdf?ver=1740066029766).
-Please attribute any citations of this repository to the latest
-version of the manuscript.
+
+Lautier, J.P. (2025). A New Framework to Estimate Return on Investment for Player Salaries in the National Basketball Association. Appl Stochastic Models Bus Ind, 41: e70020. [https://doi.org/10.1002/asmb.70020](https://doi.org/10.1002/asmb.70020)
+
+
+Please attribute any citations of this repository to the above.
 
 Historical versions: [arXiv](https://arxiv.org/abs/2309.05783).
 
@@ -25,6 +25,8 @@ This repository includes:
 ## Links
 
 - [Repo](https://github.com/jackson-lautier/nba_roi)
+
+- [Published Manuscript](https://doi.org/10.1002/asmb.70020)
 
 - [Latest Manuscript](https://img1.wsimg.com/blobby/go/e126e6bc-09bb-4685-8200-323fe6a91322/downloads/bbac1e70-ab77-4e31-b889-58f480e69dbd/asmbi_feb_2025.pdf?ver=1740066029766)
 
